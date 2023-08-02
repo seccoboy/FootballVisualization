@@ -33,7 +33,6 @@ filtrar_eventos <- function(eventos, minuto_inicial, minuto_final, tipo_evento, 
   return(eventos)
 }
 
-# Crie o aplicativo Shiny
 shinyApp(
   ui = fluidPage(
     sidebarLayout(
@@ -51,15 +50,16 @@ shinyApp(
           choices = tipos_eventos,
           multiple = TRUE
         ),
-        checkboxInput(
+        selectInput(  # Alterado de checkboxInput para selectInput
           inputId = "is_touch",
-          label = "É Toque",
-          value = FALSE
+          label = "Tipo de Toque",
+          choices = c("É Toque", "Não É Toque", "Ambos"),
+          selected = "Ambos"  # Selecionado por padrão
         ),
         selectInput(
           inputId = "time_selecionado",
           label = "Time Selecionado",
-          choices = c("Home", "Away"),
+          choices = c("Todos os Times", "Home", "Away"),
           multiple = FALSE
         )
       ),
@@ -72,15 +72,37 @@ shinyApp(
     # Renderize o gráfico com base nos eventos filtrados
     output$grafico <- renderPlot({
       # Filtrar os eventos com base no intervalo de tempo, tipo e time selecionado
-      time_id <- ifelse(input$time_selecionado == "Home", dados_eventos$matchCentreData$home$teamId, dados_eventos$matchCentreData$away$teamId)
-      eventos_filtrados <- filtrar_eventos(
-        dados_eventos$matchCentreData$events,
-        minuto_inicial = input$intervalo_tempo[1],
-        minuto_final = input$intervalo_tempo[2],
-        tipo_evento = input$tipo_evento,
-        time_selecionado = time_id,
-        is_touch = input$is_touch
-      )
+      if (input$time_selecionado == "Todos os Times") {
+        eventos_filtrados <- filtrar_eventos(
+          dados_eventos$matchCentreData$events,
+          minuto_inicial = input$intervalo_tempo[1],
+          minuto_final = input$intervalo_tempo[2],
+          tipo_evento = if (input$is_touch == "Ambos") input$tipo_evento else NULL,
+          is_touch = if (input$is_touch %in% c("É Toque", "Ambos")) TRUE else FALSE,
+          time_selecionado = NULL
+        )
+      } else if (input$time_selecionado == "Home") {
+        time_id <- dados_eventos$matchCentreData$home$teamId
+        eventos_filtrados <- filtrar_eventos(
+          dados_eventos$matchCentreData$events,
+          minuto_inicial = input$intervalo_tempo[1],
+          minuto_final = input$intervalo_tempo[2],
+          tipo_evento = if (input$is_touch == "Ambos") input$tipo_evento else NULL,
+          is_touch = if (input$is_touch %in% c("É Toque", "Ambos")) TRUE else FALSE,
+          time_selecionado = time_id
+        )
+      } else if (input$time_selecionado == "Away") {
+        time_id <- dados_eventos$matchCentreData$away$teamId
+        eventos_filtrados <- filtrar_eventos(
+          dados_eventos$matchCentreData$events,
+          minuto_inicial = input$intervalo_tempo[1],
+          minuto_final = input$intervalo_tempo[2],
+          tipo_evento = if (input$is_touch == "Ambos") input$tipo_evento else NULL,
+          is_touch = if (input$is_touch %in% c("É Toque", "Ambos")) TRUE else FALSE,
+          time_selecionado = time_id
+        )
+      }
+      
       
       # Obter informações dos times
       home_team <- dados_eventos$matchCentreData$home$name
@@ -93,16 +115,16 @@ shinyApp(
       p <- ggplot() +
         annotate_pitch() +
         geom_segment(data = eventos_filtrados, 
-                     aes(x = ifelse(teamId == home_team_id, x,100 -  x),
-                         y = ifelse(teamId == home_team_id, y,100 -  y),
+                     aes(x = ifelse(teamId == home_team_id, x, 100 - x),
+                         y = ifelse(teamId == home_team_id, y, 100 - y),
                          xend = ifelse(teamId == home_team_id, 100, 0),
-                         yend = ifelse(teamId == home_team_id,  goalMouthY, 100 - goalMouthY),
+                         yend = ifelse(teamId == home_team_id, goalMouthY, 100 - goalMouthY),
                          color = as.factor(teamId)),
                      arrow = arrow(length = unit(0.25, "cm")),
                      size = 1) +
         geom_text(data = eventos_filtrados,
-                  aes(x = ifelse(teamId == home_team_id,  x,100 - x),
-                      y = ifelse(teamId == home_team_id, y,100 - y),
+                  aes(x = ifelse(teamId == home_team_id, x, 100 - x),
+                      y = ifelse(teamId == home_team_id, y, 100 - y),
                       label = type$displayName),
                   color = "black",
                   vjust = -0.75) +
@@ -115,18 +137,18 @@ shinyApp(
       p <- p +
         geom_segment(
           data = eventos_filtrados[eventos_filtrados$type$displayName == "Pass", ],
-          aes(x = ifelse(teamId == home_team_id,  x,100 - x),
-              y = ifelse(teamId == home_team_id,  y,100 - y),
-              xend = ifelse(teamId == home_team_id,  endX,100 - endX),
-              yend = ifelse(teamId == home_team_id, endY,100 -  endY)),
+          aes(x = ifelse(teamId == home_team_id, x, 100 - x),
+              y = ifelse(teamId == home_team_id, y, 100 - y),
+              xend = ifelse(teamId == home_team_id, endX, 100 - endX),
+              yend = ifelse(teamId == home_team_id, endY, 100 - endY),
+              color = as.factor(teamId)),  # Adicionado color para atualizar a cor da seta
           arrow = arrow(length = unit(0.125, "cm")),
-          color = "gray50",
           size = 0.5
         ) +
         geom_point(
           data = eventos_filtrados,
           aes(x = ifelse(teamId == home_team_id, x, 100 - x),
-              y = ifelse(teamId == home_team_id, y,100 -  y),
+              y = ifelse(teamId == home_team_id, y, 100 - y),
               fill = type$displayName),
           shape = 21,
           color = "black",
