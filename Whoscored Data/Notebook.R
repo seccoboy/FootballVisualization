@@ -112,6 +112,7 @@ shinyApp(
       team_colors <- c("#FF0000", "#0000FF")  # Define as cores dos times
       
       # Plotar os eventos filtrados dentro do campo
+      
       p <- ggplot() +
         annotate_pitch() +
         geom_segment(data = eventos_filtrados, 
@@ -125,8 +126,8 @@ shinyApp(
         geom_text(data = eventos_filtrados,
                   aes(x = ifelse(teamId == home_team_id, x, 100 - x),
                       y = ifelse(teamId == home_team_id, y, 100 - y),
-                      label = type$displayName),
-                  color = "black",
+                      label = type$displayName,
+                      color = as.factor(teamId)),  # Define a cor do texto com base no teamId
                   vjust = -0.75) +
         scale_color_manual(values = team_colors,
                            breaks = c(home_team_id, away_team_id),
