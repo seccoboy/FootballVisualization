@@ -5,32 +5,76 @@ if (!requireNamespace("ggplot2", quietly = TRUE)) {
 if (!requireNamespace("ggsoccer", quietly = TRUE)) {
   install.packages("ggsoccer")
 }
+if (!requireNamespace("jsonlite", quietly = TRUE)) {
+  install.packages("jsonlite")
+}
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
 library(jsonlite)
 library(ggplot2)
 library(ggsoccer)
-library(shiny)
+library(dplyr)
 
 # Carregue o arquivo JSON com os eventos
 dados_eventos <- jsonlite::fromJSON("Bahia-Gremio-Whoscored.json")
+
 # Obtenha os tipos únicos de eventos disponíveis
 eventos <- dados_eventos$matchCentreData$events
 
-# Função para adicionar a coluna nextPlayerId
-addNextPlayerId <- function(data) {
-  nextPlayerIds <- c(data[-1], NA)
-  data$nextPlayerId <- nextPlayerIds
-  return(data)
+# Filtrar eventos com type.value = 1
+filtered_events <- eventos %>%
+  filter(type$value == 1)
+
+# Extrair os dados relevantes
+data <- data.frame(
+  minute = filtered_events$minute,
+  second = filtered_events$second,
+  teamId = filtered_events$teamId,
+  x = filtered_events$x,
+  y = filtered_events$y,
+  outcomeType = filtered_events$outcomeType$value,
+  playerId = filtered_events$playerId,
+  endX = filtered_events$endX,
+  endY = filtered_events$endY,
+  TargetPlayer = c(filtered_events$playerId[-1], NA)
+)
+
+# Criar gráficos de rede separados para cada teamId
+
+for (team_id in unique(data$teamId)) {
+  team_data <- data %>%
+    filter(teamId == team_id)
+  
+  player_positions <- team_data %>%
+    group_by(playerId) %>%
+    summarise(mean_x = mean(x), mean_y = mean(y), .groups = "drop")
+  
+  pass_edges <- team_data %>%
+    filter(!is.na(TargetPlayer)) %>%
+    group_by(playerId, TargetPlayer) %>%
+    summarise(passes = n(), .groups = "drop")
+  
+  pass_coords <- pass_edges %>%
+    left_join(player_positions, by = c("playerId" = "playerId")) %>%
+    left_join(player_positions, by = c("TargetPlayer" = "playerId"), suffix = c("_origem", "_destino"))
+  
+  plot <- ggplot(player_coords, aes(x = mean_x, y = mean_y)) +
+    annotate_pitch() +
+    geom_point() +
+    
+    geom_curve(data = pass_coords,
+               aes(x = mean_x_origem, y = mean_y_origem,
+                   xend = mean_x_destino, yend = mean_y_destino,
+                   color = as.factor(passes)),
+               curvature = -0.2, size = 0.5,
+               arrow = arrow(length = unit(0.02, "npc"))) +
+    
+    geom_text(data = player_positions, aes(label = playerId), vjust = -0.5, size = 3) +
+    scale_color_viridis_c() +
+    ggtitle(paste("Equipe ID:", team_id)) +
+    coord_flip() +
+    theme_minimal()
+  
+  print(plot)  # Aqui está a correção para imprimir o gráfico
 }
-
-# Filtrar e modificar os eventos
-eventos_filtrados <- lapply(eventos, function(evento) {
-  if (evento$type == "1" && evento$outcomeType == "1") {
-    evento <- addNextPlayerId(evento)
-  }
-  return(evento)
-})
-
-# Exibir o resultado
-View(eventos_filtrados)
-
-
