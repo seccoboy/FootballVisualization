@@ -3,9 +3,10 @@ if (!requireNamespace("ggforce", quietly = TRUE)) {
   install.packages("ggforce")
 }
 library(ggforce)
+library(dplyr)
 library(ggplot2)
 library(ggsoccer)
-library(dplyr)
+
 
 # Carregue o arquivo JSON com os eventos
 dados_eventos <- jsonlite::fromJSON("Vasco-Cuiaba-Whoscored.json")
