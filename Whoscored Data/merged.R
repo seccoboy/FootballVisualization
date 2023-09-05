@@ -236,7 +236,8 @@ shinyApp(
           # Calculate the mean passes for each player
           mean_passes <- team_successful_passes %>%
             group_by(playerId) %>%
-            summarize(mean_passes = n())
+            summarize(mean_passes = n()) %>%
+            arrange(mean_passes)
           
           # Merge mean_passes with team_player_positions
           team_player_positions <- left_join(team_player_positions, mean_passes, by = "playerId")
@@ -244,24 +245,24 @@ shinyApp(
             mutate(playerName = dados_eventos$matchCentreData$playerIdNameDictionary[as.character(playerId)])
           
           p2 <- ggplot() + annotate_pitch() +
-            geom_point(data = team_player_positions, aes(x = mean_x, y = mean_y, size = mean_passes)) +
-            geom_segment(data = pass_coords %>% filter(!is.na(mean_x_destino) & !is.na(mean_y_destino)),
+            geom_point(data = team_player_positions, aes(x = mean_x, y = mean_y, size = mean_passes*3, alpha = mean_passes), color = "black") +
+            geom_segment(data = pass_coords %>%
+                           filter(!is.na(mean_x_destino) & !is.na(mean_y_destino)),
                          aes(x = mean_x_origem, y = mean_y_origem,
-                             xend = mean_x_destino, yend = mean_y_destino),
-                         size = ((pass_coords$passes - min_passes) / (max_passes - min_passes)) + 0.5,
-                         lineend = "round",
-                         alpha = 0.5) +
-            geom_text(data = team_player_positions, aes(x = mean_x, y = mean_y, label = playerName), vjust = -1.5, size = 3) +
-            ggtitle(paste("Equipe:", ifelse(team_id == home_team_id, home_team, away_team))) +  # Substitui "Equipe ID:" pelo nome do time
+                             xend = mean_x_destino, yend = mean_y_destino, color = passes, size =  (passes / passes * passes) / 100, alpha = passes)) +
+            scale_size_continuous(range = c(1, 7)) +  # Ajuste o intervalo de tamanho desejado
+            scale_color_gradient(low = "white", high = "red") +
+            scale_alpha_continuous(range = c(0.005, 1)) +  # Intervalo de transparência mais drástico
+            geom_text(data = team_player_positions, aes(x = mean_x, y = mean_y, label = playerName), vjust = -.75, size = 5) +
+            ggtitle(paste("Equipe:", ifelse(team_id == home_team_id, home_team, away_team))) +
             coord_flip() +
             theme_minimal() +
-            scale_alpha_continuous(range = c(0.2, 1)) +
-            scale_size_continuous(range = c(3, 10))  # Ajuste o intervalo de tamanho dos pontos
-          p2_list[[as.character(team_id)]] <- p2  # Adicione o gráfico p2 à lista
+            p2 <- p2 + coord_cartesian(clip = "off")  # Permita que os gráficos se expandam além das margens
+            p2_list[[as.character(team_id)]] <- p2  # Adicione o gráfico p2 à lista
         }
+        
         combined_p2 <- do.call(grid.arrange, c(p2_list, ncol = 2))
         
-        # Combine o gráfico p1 e os gráficos p2 usando grid.arrange
         combined_plot <- grid.arrange(p1, combined_p2, ncol = 1)
       
       return(combined_plot)
