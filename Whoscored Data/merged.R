@@ -142,7 +142,7 @@ shinyApp(
         labs(title = paste(home_team, "vs", away_team)) +
         theme(legend.position = "top")
       
-      p <- p +
+      p1 <- p1 +
         geom_segment(
           data = eventos_filtrados[eventos_filtrados$type$displayName == "Pass", ],
           aes(x = ifelse(teamId == home_team_id, x, 100 - x),
@@ -223,7 +223,7 @@ shinyApp(
                     passes = nrow(player_passes),
                     pass_percentage = nrow(player_passes) / nrow(team_successful_passes)
                   )
-                  
+                 
                   pass_coords <- bind_rows(pass_coords, pass_coord)
                 }
               }
@@ -240,6 +240,8 @@ shinyApp(
           
           # Merge mean_passes with team_player_positions
           team_player_positions <- left_join(team_player_positions, mean_passes, by = "playerId")
+          team_player_positions <- team_player_positions %>%
+            mutate(playerName = dados_eventos$matchCentreData$playerIdNameDictionary[as.character(playerId)])
           
           p2 <- ggplot() + annotate_pitch() +
             geom_point(data = team_player_positions, aes(x = mean_x, y = mean_y, size = mean_passes)) +
@@ -249,19 +251,18 @@ shinyApp(
                          size = ((pass_coords$passes - min_passes) / (max_passes - min_passes)) + 0.5,
                          lineend = "round",
                          alpha = 0.5) +
-            geom_text(data = team_player_positions, aes(x = mean_x, y = mean_y, label = playerId), vjust = -1.5, size = 3) +
-            ggtitle(paste("Equipe ID:", team_id)) +
+            geom_text(data = team_player_positions, aes(x = mean_x, y = mean_y, label = playerName), vjust = -1.5, size = 3) +
+            ggtitle(paste("Equipe:", ifelse(team_id == home_team_id, home_team, away_team))) +  # Substitui "Equipe ID:" pelo nome do time
             coord_flip() +
             theme_minimal() +
             scale_alpha_continuous(range = c(0.2, 1)) +
             scale_size_continuous(range = c(3, 10))  # Ajuste o intervalo de tamanho dos pontos
-          
           p2_list[[as.character(team_id)]] <- p2  # Adicione o gráfico p2 à lista
         }
         combined_p2 <- do.call(grid.arrange, c(p2_list, ncol = 2))
         
         # Combine o gráfico p1 e os gráficos p2 usando grid.arrange
-        combined_plot <- grid.arrange(p1, combined_p2, ncol = 2)
+        combined_plot <- grid.arrange(p1, combined_p2, ncol = 1)
       
       return(combined_plot)
     })
