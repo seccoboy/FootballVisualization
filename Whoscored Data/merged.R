@@ -73,12 +73,12 @@ shinyApp(
         )
       ),
       mainPanel(
-        plotOutput("grafico", height = "800", width = "1200px")  
+        plotOutput("grafico", height = "1800", width = "1024px")  
       )
     )
   ),
   server = function(input, output) {
-    # Renderize o gráfico com base nos eventos filtrados
+    
     output$grafico <- renderPlot({
       # Filtrar os eventos com base no intervalo de tempo, tipo e time selecionado
       if (input$time_selecionado == "Todos os Times") {
@@ -112,16 +112,17 @@ shinyApp(
         )
       }
       
-      # Obter informações dos times
+      
       home_team <- dados_eventos$matchCentreData$home$name
       away_team <- dados_eventos$matchCentreData$away$name
       home_team_id <- dados_eventos$matchCentreData$home$teamId
       away_team_id <- dados_eventos$matchCentreData$away$teamId
       team_colors <- c("#FF0000", "#0000FF")  # Define as cores dos times
       
-      # Plotar os eventos filtrados dentro do campo
+      
       p1 <- ggplot() +
         annotate_pitch() +
+        theme_pitch()  +
         geom_segment(data = eventos_filtrados, 
                      aes(x = ifelse(teamId == home_team_id, x, 100 - x),
                          y = ifelse(teamId == home_team_id, y, 100 - y),
@@ -253,20 +254,18 @@ shinyApp(
                              xend = mean_x_destino, yend = mean_y_destino, color = passes, size =  (passes / passes * passes) / 100, alpha = passes)) +
             geom_point(data = team_player_positions, aes(x = mean_x, y = mean_y, size = mean_passes*3, alpha = mean_passes), color = "black") +
             scale_size_continuous(range = c(1, 7)) +  # Ajuste o intervalo de tamanho desejado
-            scale_color_gradient(low = "white", high = "red") +
-            scale_alpha_continuous(range = c(0.005, 1)) +  # Intervalo de transparência mais drástico
+            scale_color_gradient(low = "blue", high = "red") +
+            scale_alpha_continuous(range = c(0.01, 1)) +  # Intervalo de transparência mais drástico
             geom_text(data = team_player_positions, aes(x = mean_x, y = mean_y, label = playerName), vjust = -.75, size = 5) +
             ggtitle(paste("Equipe:", ifelse(team_id == home_team_id, home_team, away_team))) +
-            coord_flip() +
-            theme_minimal() +
-            theme(legend.position = "none")  # Remova a legenda de cor
-          p2 <- p2 + coord_cartesian(clip = "off")  # Permita que os gráficos se expandam além das margens
-          p2_list[[as.character(team_id)]] <- p2  # Adicione o gráfico p2 à lista
+            coord_flip() + theme_pitch()  +
+            
+            theme(legend.position = "none")  
+          p2 <- p2 + coord_cartesian(clip = "off")  # expandir alem das margens
+          p2_list[[as.character(team_id)]] <- p2  
         }
         
         combined_p2 <- do.call(grid.arrange, c(p2_list, ncol = 2))
-        
-        
         combined_plot <- grid.arrange(p1, combined_p2, ncol = 1)
       
       return(combined_plot)
